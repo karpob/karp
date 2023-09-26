@@ -29,116 +29,6 @@ def applyPc(f,subset,scores,q=[0.5]):
 def makeScaledInt(rads,scale_factor):
     r = np.round(rads/scale_factor,0).astype('int')
     return r
-    
-keysJunkArray = ['extendedDelayedDescriptorReplicationFactor',]
-keysJunkGet = ['edition',
-              'masterTableNumber',
-              'bufrHeaderCentre',
-              'bufrHeaderSubCentre',
-              'updateSequenceNumber',
-              'dataCategory',
-              'internationalDataSubCategory',
-              'dataSubCategory',
-              'masterTablesVersionNumber',
-              'localTablesVersionNumber',
-              'numberOfSubsets',
-              'observedData',
-              'compressedData',
-              'unexpandedDescriptors']
-
-keysPassedGet = [ 'typicalYear',
-                  'typicalMonth',
-                  'typicalDay',
-                  'typicalHour',
-                  'typicalMinute',
-                  'typicalSecond',
-                  'satelliteIdentifier',
-                  'centre',
-                  '#1#satelliteInstruments',
-                  'satelliteClassification']
-
-keysModifiedArray = []
-keysModifiedArray.append( 'year')
-keysModifiedArray.append( 'month')
-keysModifiedArray.append( 'day')
-keysModifiedArray.append( 'hour')
-keysModifiedArray.append( 'minute')
-keysModifiedArray.append('second')
-keysModifiedArray.append( 'latitude')
-keysModifiedArray.append('longitude')
-keysModifiedArray.append('satelliteZenithAngle')
-keysModifiedArray.append('bearingOrAzimuth')
-keysModifiedArray.append('solarZenithAngle')
-keysModifiedArray.append('solarAzimuth')
-keysModifiedArray.append('fieldOfViewNumber')
-
-keysModified = []
-keysModified.append('orbitNumber')
-keysModified.append('scanLineNumber')
-keysModified.append('heightOfStation')
-keysModified.append( '#1#startChannel')
-keysModified.append( '#1#endChannel')
-keysModifiedArray.append('#1#gqisFlagQual')
-keysModified.append( '#2#startChannel')
-keysModified.append( '#2#endChannel')
-keysModifiedArray.append( '#2#gqisFlagQual')
-keysModified.append( '#3#startChannel')
-keysModified.append( '#3#endChannel')
-keysModifiedArray.append( '#3#gqisFlagQual')
-keysModifiedArray.append( 'gqisQualIndex')
-keysModifiedArray.append( 'gqisQualIndexLoc')
-keysModifiedArray.append( 'gqisQualIndexRad')
-keysModifiedArray.append( 'gqisQualIndexSpect')
-keysModifiedArray.append( 'gqisSysTecQual')
-
-keysUsedButDropped = []
-keysUsedButDropped.append('#14#startChannel')
-keysUsedButDropped.append( '#14#endChannel')
-keysUsedButDropped.append( '#1#scoreQuantizationFactor')
-keysUsedButDropped.append( '#1#residualRmsInBand')
-keysUsedButDropped.append( '#1#databaseIdentification')
-for ipc in list(range(1,91)):
-    keysUsedButDropped.append( '#{}#nonNormalizedPrincipalComponentScore'.format(ipc))
-
-keysUsedButDropped.append( '#15#startChannel')
-keysUsedButDropped.append( '#15#endChannel')
-keysUsedButDropped.append( '#2#scoreQuantizationFactor')
-keysUsedButDropped.append( '#2#residualRmsInBand')
-keysUsedButDropped.append( '#2#databaseIdentification')
-for ipc in list(range(91,211)):
-    keysUsedButDropped.append( '#{}#nonNormalizedPrincipalComponentScore'.format(ipc))
-keysUsedButDropped.append( '#16#startChannel')
-keysUsedButDropped.append( '#16#endChannel')
-keysUsedButDropped.append( '#3#scoreQuantizationFactor')
-keysUsedButDropped.append( '#3#residualRmsInBand')
-keysUsedButDropped.append( '#3#databaseIdentification')
-for ipc in list(range(211,301)):
-    keysUsedButDropped.append('#{}#nonNormalizedPrincipalComponentScore'.format(ipc))
-
-avhrrKeysGet = []
-avhrrKeysGet.append('#2#satelliteInstruments')
-avhrrKeysGet.append('avhrrChannelCombination')
-#some reason 2-43 used here for channels 42 in all (6  something by 7 something)
-for cc in list(range(2,44)): 
-    avhrrKeysGet.append('#{}#channelNumber'.format(cc))
-
-avhrrKeysGetArray = []
-avhrrKeysGetArray.append( 'numberOfMissingBadOrFailedAvhrrPixels')
-
-for vv in list(range(1,8)):
-    avhrrKeysGetArray.append('#{}#yAngularPositionFromCentreOfGravity'.format(vv))
-    avhrrKeysGetArray.append('#{}#zAngularPositionFromCentreOfGravity'.format(vv))
-    avhrrKeysGetArray.append('#{}#fractionOfClearPixelsInHirsFov'.format(vv))
-for vv in list(range(11,95)):
-    avhrrKeysGetArray.append('#{}#channelScaleFactor'.format(vv))
-
-for vv in list(range(1,43)):
-    avhrrKeysGetArray.append('#{}#scaledMeanAvhrrRadiance'.format(vv))
-    avhrrKeysGetArray.append('#{}#scaledStandardDeviationAvhrrRadiance'.format(vv))
-avhrrKeysGetArray.append('#1#surfaceType')
-avhrrKeysGetArray.append('amountOfSegmentCoveredByScene')
-avhrrKeysGetArray.append('fractionOfWeightedAvhrrPixelInIasiFovCoveredWithSnowOrIce')
-avhrrKeysGetArray.append('cloudAmountInSegment')
 
 def initDict(dictKeys):
     d = {}
@@ -146,15 +36,37 @@ def initDict(dictKeys):
         d[k] = []
     return d
 
-def bufr_decode(input_file):
-    avhrrDataArray = initDict(avhrrKeysGetArray)
-    avhrrData = initDict(avhrrKeysGet)
-    usedButDroppedDataArray = initDict(keysUsedButDropped) 
+def createMap(inDict,outDict):
+    m = {}
+    for k in list(inDict.keys()):
+        m[k] = {}
+        for i,kk in enumerate(inDict[k]):
+            m[k][kk] = outDict[k][i]
+    return m
+
+def bufr_decode(input_file,\
+                imagerKeys,\
+                imagerKeysArray,\
+                keysUsedButDropped,\
+                keysUsedButDroppedArray,\
+                keysModified,\
+                keysModifiedArray,\
+                keysPassed,\
+                keysPassedArray,\
+                keysUnused,\
+                keysUnusedArray):
+
+    imagerData = initDict(imagerKeys)
+    imagerDataArray = initDict(imagerKeysArray)
+    usedButDroppedData = initDict(keysUsedButDropped) 
+    usedButDroppedDataArray = initDict(keysUsedButDroppedArray) 
     modifiedData = initDict(keysModified)
     modifiedDataArray = initDict(keysModifiedArray)
-    passedData = initDict(keysPassedGet)
-    junkData = initDict(keysJunkGet) 
-    junkArray = initDict(keysJunkArray)
+    passedData = initDict(keysPassed)
+    passedDataArray = initDict(keysPassedArray)
+    unusedData = initDict(keysUnused) 
+    unusedArray = initDict(keysUnusedArray)
+
     f = open(input_file, 'rb')
     # Message number 1
     # -----------------
@@ -170,10 +82,12 @@ def bufr_decode(input_file):
             break
 
         codes_set(ibufr, 'unpack', 1)
-        for k in list(avhrrData.keys()):
-            avhrrData[k].append(codes_get(ibufr, k))
-        for k in list(avhrrDataArray.keys()):
-            avhrrDataArray[k].append(codes_get_array(ibufr,k))
+        for k in list(imagerData.keys()):
+            imagerData[k].append(codes_get(ibufr, k))
+        for k in list(imagerDataArray.keys()):
+            imagerDataArray[k].append(codes_get_array(ibufr,k))
+        for k in list(usedButDroppedData.keys()):
+            usedButDroppedData[k].append(codes_get(ibufr,k))
         for k in list(usedButDroppedDataArray.keys()):
             usedButDroppedDataArray[k].append(codes_get_array(ibufr,k))
         for k in list(modifiedData.keys()):
@@ -181,23 +95,27 @@ def bufr_decode(input_file):
         for k in list(modifiedDataArray.keys()):
             modifiedDataArray[k].append(codes_get_array(ibufr,k))
         for k in list(passedData.keys()):
-            #print(k)
-            passedData[k].append(codes_get_array(ibufr,k))
-        for k in list(junkData.keys()):
-            junkData[k].append(codes_get(ibufr,k))
-        for k in list(junkArray):
-            junkArray[k].append(codes_get_array(ibufr,k))
+            passedData[k].append(codes_get(ibufr,k))
+        for k in list(passedDataArray.keys()):
+            passedDataArray[k].append(codes_get_array(ibufr,k))
+        for k in list(unusedData.keys()):
+            unusedData[k].append(codes_get(ibufr,k))
+        for k in list(unusedArray):
+            unusedArray[k].append(codes_get_array(ibufr,k))
         
         codes_release(ibufr)
     f.close()
-    return junkData,\
-           junkArray,\
-           passedData,\
+    return imagerData,\
+           imagerDataArray,\
+           usedButDroppedData,\
+           usedButDroppedDataArray,\
            modifiedData,\
            modifiedDataArray,\
-           usedButDroppedDataArray,\
-           avhrrData,\
-           avhrrDataArray
+           passedData,\
+           passedDataArray,\
+           unusedData,\
+           unusedArray
+
 def matchDims(modifiedDataArray,nscan=120):
     for k in list(modifiedDataArray.keys()):
         tmp = modifiedDataArray[k]
@@ -211,7 +129,23 @@ def matchDims(modifiedDataArray,nscan=120):
     return modifiedDataArray     
 
 
-def bufr_encode(junkData,junkArray,passedData,modifiedData,modifiedDataArray,avhrrData,avhrrDataArray,scaledRadianceSubset,allChansInSubset,outfn,scale_limits,scale_values):
+def bufr_encode(imagerData,\
+                imagerDataArray,\
+                usedButDroppedData,\
+                usedButDroppedDataArray,\
+                modifiedData,\
+                modifiedDataArray,\
+                passedData,\
+                passedDataArray,\
+                unusedData,\
+                unusedArray,\
+                scaledRadianceSubset,\
+                allChansInSubset,\
+                outfn,\
+                scale_limits,\
+                scale_values,\
+                mapBuf):
+
     nchunk = 30
     nfov = 4
     #scaled radiances dims chan,scan,fov# (1-120)
@@ -238,21 +172,16 @@ def bufr_encode(junkData,junkArray,passedData,modifiedData,modifiedDataArray,avh
             # Create the structure of the data section
             codes_set(ibufr, 'unexpandedDescriptors', 361207)
             for k in list(passedData.keys()):
-                tmp = int(passedData[k][iscn][0])
-                codes_set(ibufr,k,tmp)
+                tmp = int(passedData[k][iscn])
+                codes_set(ibufr, mapBuf['passed'][k], tmp)
+            for k in list(passedDataArray.keys()):
+                tmp = passedDataArray[k][iscn]
+                codes_set(ibufr, mapBuf['passedArray'][k], tmp)
             for k in list(modifiedData.keys()):
-                if('Channel' in k):
-                    continue
-                codes_set(ibufr,k,modifiedData[k][iscn])
+                codes_set(ibufr,mapBuf['modified'][k],modifiedData[k][iscn])
             for k in list(modifiedDataArray.keys()):
-                if(k=='#2#gqisFlagQual' or k=='#3#gqisFlagQual'):
-                   continue
-                elif(k=='fieldOfViewNumber'):
-                    tmp1 = np.asarray(modifiedDataArray[k][iscn][fov_start:fov_start+nchunk])
-                    tmp = tmp1+1 
-                else:
-                    tmp = np.asarray(modifiedDataArray[k][iscn][fov_start:fov_start+nchunk])
-                codes_set_array(ibufr, k, tmp)
+                tmp = np.asarray(modifiedDataArray[k][iscn][fov_start:fov_start+nchunk])
+                codes_set_array(ibufr, mapBuf['modifiedArray'][k], tmp)
             for iss,c in enumerate(allChansInSubset):
                 codes_set(ibufr, '#{}#channelNumber'.format(iss+1), int(c))
                 vec1 = np.asarray(scaledRadianceSubset[iss,iscn,fov_start:fov_start+nchunk]).astype('int32')-5000
@@ -271,26 +200,14 @@ def bufr_encode(junkData,junkArray,passedData,modifiedData,modifiedDataArray,avh
                     codes_set(ibufr, '#{}#channelScaleFactor'.format(ib+1), int(-1.0*np.log10(float(scale_values[b]))))
  
 
-            for k in list(avhrrData.keys()):
+            for k in list(imagerData.keys()):
                 # NCEP's message goes through 616 channel numbers before it gets to AVHRR
                 # eumetsat's bufr doesn't go through channels, because it's all PCs
-                if('channelNumber' in k):
-                    num = int(k.split('#')[1])+615
-                    kk = '#{}#channelNumber'.format(num)
-                else:
-                    kk = k
-                codes_set(ibufr,kk,avhrrData[k][iscn])
-            for k in list(avhrrDataArray.keys()):
-                #print(k,avhrrDataArray['numberOfMissingBadOrFailedAvhrrPixels'])
-                if(k=='numberOfMissingBadOrFailedAvhrrPixels' or\
-                   k=='#1#surfaceType' or\
-                   k=='amountOfSegmentCoveredByScene' or\
-                   k=='fractionOfWeightedAvhrrPixelInIasiFovCoveredWithSnowOrIce' or\
-                   k=='cloudAmountInSegment'):
-                    pass
-                else:
-                    #print(k)
-                    codes_set_array(ibufr,k,avhrrDataArray[k][iscn][fov_start:fov_start+nchunk])
+                kk = mapBuf['imager'][k]
+                codes_set(ibufr,kk,imagerData[k][iscn])
+            for k in list(imagerDataArray.keys()):
+                kk = mapBuf['imagerArray'][k]
+                codes_set_array(ibufr,kk,imagerDataArray[k][iscn][fov_start:fov_start+nchunk])
             fov_start+=nchunk
             # Encode the keys back in the data section
             codes_set(ibufr, 'pack', 1)
@@ -303,23 +220,41 @@ def bufr_encode(junkData,junkArray,passedData,modifiedData,modifiedDataArray,avh
             codes_write(ibufr, outfile)
             codes_release(ibufr)
 
-def main(matrix,subset,band_limits,pc_limits,scale_limits,scale_values):
+def main(matrix, subset, band_limits, pc_limits, scale_limits, scale_values, ioIn, ioBufOut, ioNcOut):
    
     if len(sys.argv) < 3:
         print('Usage: ', sys.argv[0], ' BUFR_file_in', sys.argv[1],'BUFR_file_out', file=sys.stderr)
         sys.exit(1)
     infn = sys.argv[1]
     outfn = sys.argv[2]
-    print('infn',infn)
-    print('outfn',outfn)  
+    print('Input File: ',infn)
+    print('Output File', outfn)
     try:
-        junkData,junkArray,passedData,modifiedData,modifiedDataArray,usedButDroppedArray,avhrrData,avhrrDataArray = bufr_decode(infn)
+        imagerData,\
+        imagerDataArray,\
+        usedButDroppedData,\
+        usedButDroppedDataArray,\
+        modifiedData,\
+        modifiedDataArray,\
+        passedData,\
+        passedDataArray,\
+        unusedData,\
+        unusedArray = bufr_decode(infn,\
+                                  ioIn['imager'],\
+                                  ioIn['imagerArray'],\
+                                  ioIn['usedButDropped'],\
+                                  ioIn['usedButDroppedArray'],\
+                                  ioIn['modified'],\
+                                  ioIn['modifiedArray'],\
+                                  ioIn['passed'],\
+                                  ioIn['passedArray'],\
+                                  ioIn['unused'],\
+                                  ioIn['unusedArray'])
+
     except CodesInternalError as err:
         traceback.print_exc(file=sys.stderr)
         return 1
     
-    for k in usedButDroppedArray.keys():
-        print(k,np.asarray(usedButDroppedArray[k]).shape)
     #setup band channel numbers, and band idx starting at 0.
     bandChans = {}
     bandIdx = {}
@@ -330,19 +265,24 @@ def main(matrix,subset,band_limits,pc_limits,scale_limits,scale_values):
             tmp.append(np.where(bandChans[k]==i)[0][0])
         bandIdx[k] = tmp
 
+
+    # Initialize an array to hold PCs in each band, add 1 to upper limit for python behavior of last value in list  
     pcBand = {}
-    
     for k in list(matrix.keys()):
         pcBand[k] = []
         #add 1 to limits to follow python convention for range.
         pc_limits[k][1]+=1
+
+    # for each band, grab Qs and PCs
     score_q = {}
     bandNames = list(pcBand.keys())
     bandNames.sort()
     for k in bandNames:
-        score_q[k] = usedButDroppedArray['#{}#scoreQuantizationFactor'.format(k.replace('band',''))]
+        score_q[k] = usedButDroppedDataArray['#{}#scoreQuantizationFactor'.format(k.replace('band',''))]
         for i in range(pc_limits[k][0],pc_limits[k][1]):
-            pcBand[k].append(usedButDroppedArray['#{}#nonNormalizedPrincipalComponentScore'.format(i)])
+            pcBand[k].append(usedButDroppedDataArray['#{}#nonNormalizedPrincipalComponentScore'.format(i)])
+
+    # for each band apply PCs and make a big matrix of reconstructed radiances
     subsetRad = []
     for b in bandNames:
         tmp = applyPc(matrix[b], bandIdx[b], pcBand[b], q=score_q[b])
@@ -350,19 +290,25 @@ def main(matrix,subset,band_limits,pc_limits,scale_limits,scale_values):
             subsetRad = tmp
         else:
             subsetRad = np.append(subsetRad,tmp,axis=0)
+    # get channel numbers associated with subset 
     allChansInSubset = []
     ks = list(subset.keys())
     ks.sort()
     for k in ks:
         allChansInSubset.extend(subset[k])
-    #Apply scale factors
     allChansInSubset = np.asarray(allChansInSubset)
+
+    #Apply scale factors
     scaleArr = np.zeros(subsetRad.shape)
     for l in list(scale_limits.keys()):
         idx, = np.where( (allChansInSubset>=scale_limits[l][0]) &(allChansInSubset<=scale_limits[l][1]) )
         scaleArr[idx,:,:] = scale_values[l]
     scaledRadianceSubset = np.round(subsetRad/scaleArr,0).astype(int)
-    #print(scaledRadianceSubset.shape)
+    # sometimes people like fov number to start with 0, the GSI does not (JEDI doesn't either), so add 1.
+    if(modifiedDataArray['fieldOfViewNumber'][0][0] == 0):
+        tmp = np.asarray(modifiedDataArray['fieldOfViewNumber']) +1
+        modifiedDataArray['fieldOfViewNumber'] = tmp
+
     hf = h5py.File('quick_dump.h5', 'w')
     hf.create_dataset('scaledRadiance', data=scaledRadianceSubset)
     hf.create_dataset('longitude', data=np.asarray(modifiedDataArray['longitude']))
@@ -370,17 +316,35 @@ def main(matrix,subset,band_limits,pc_limits,scale_limits,scale_values):
     hf.create_dataset('fieldOfViewNumber', data=np.asarray(modifiedDataArray['fieldOfViewNumber'])+1)
     hf.create_dataset('satelliteZenithAngle', data=np.asarray(modifiedDataArray['satelliteZenithAngle']))
     hf.close()
-    #for i in range(0,765):
-    #    print('flag 1',modifiedDataArray['#1#gqisFlagQual'][0]) 
-    #    print('flag 2',modifiedDataArray['#2#gqisFlagQual'][0]) #3#gqisFlagQual
-    #    print('flag 3',modifiedDataArray['#3#gqisFlagQual'][0]) #3#gqisFlagQual
+
     modifiedDataArray = matchDims(modifiedDataArray)
-    avhrrDataArray = matchDims(avhrrDataArray)
-    bufr_encode(junkData,junkArray,passedData,modifiedData,modifiedDataArray,avhrrData,avhrrDataArray,scaledRadianceSubset,allChansInSubset,outfn,scale_limits,scale_values)
+    imagerDataArray = matchDims(imagerDataArray)
+  
+    mapNc = createMap(ioIn, ioNcOut)
+    mapBuf = createMap(ioIn, ioBufOut)   
+
+    bufr_encode(imagerData,\
+                imagerDataArray,\
+                usedButDroppedData,\
+                usedButDroppedDataArray,\
+                modifiedData,\
+                modifiedDataArray,\
+                passedData,\
+                passedDataArray,\
+                unusedData,\
+                unusedArray,\
+                scaledRadianceSubset,\
+                allChansInSubset,\
+                outfn,\
+                scale_limits,\
+                scale_values,\
+                mapBuf)
 
 if __name__ == "__main__":
     cfg = configparser.ConfigParser()
     cfg.read( 'channel_subset.cfg' )
+
+
     matrix = {}
     subset = {}
     band_limits = {}
@@ -407,5 +371,29 @@ if __name__ == "__main__":
     for k in list(cfg['scale_values']):
         a = float(cfg['scale_values'][k])
         scale_values[k] = a 
-    
-    sys.exit(main(matrix,subset,band_limits,pc_limits,scale_limits,scale_values))
+
+    iocfg = configparser.ConfigParser()
+    iocfg.read( 'iasi_io_map.cfg' )
+    for k in iocfg.keys():
+        print(k)  
+    flagsCombine = json.loads(iocfg['flagsCombine']['input'])
+    ioIn = {}
+    ioBufOut = {}
+    ioNcOut = {}
+    for k in iocfg.keys():
+        #already have flags combined handled above
+        if k=='flagsCombine': continue
+        if ('input' in iocfg[k].keys()):
+            print(k)
+            ioIn[k] = json.loads(iocfg[k]['input'])
+        else:
+            ioIn[k] = []
+        if('outBuf' not in list(iocfg[k].keys())):
+            ioBufOut[k] = ioIn[k]
+        else:
+            ioBufOut[k] = json.loads(iocfg[k]['outBuf'])
+        if('ncOut' not in list(iocfg[k].keys()) ):
+            ioNcOut[k] = ioIn[k]
+        else:
+            ioNcOut[k] = json.loads(iocfg[k]['outNc']) 
+    sys.exit( main(matrix, subset, band_limits, pc_limits, scale_limits, scale_values, ioIn, ioBufOut, ioNcOut) )
