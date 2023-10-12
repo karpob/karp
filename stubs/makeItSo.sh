@@ -1,0 +1,1 @@
+./karrpp.py --input /discover/nobackup/projects/gmao/obsdev/bkarpowi/iasipc_dumps/gdas.220504.t06z.mtiasi.tm00.bufr_d --output /discover/nobackup/projects/gmao/obsdev/bkarpowi/iasipc_dumps/rr/gdas.220504.t06z.mtiasi.tm00.bufr_d

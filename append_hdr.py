@@ -10,31 +10,30 @@ def getFilesInWindow(files,swin,ewin):
         fstart = datetime.strptime(fns[5].split('.')[0],'%Y%m%d%H%M%S')
         fend = datetime.strptime(fns[6],'%Y%m%d%H%M%S')
         if ( (fstart >= swin or fend >= swin) and (fstart <= ewin)):
-            if('M01' in f):
-                print('file',f)
             filesOut.append(f)
     return filesOut
 
-def catFiles(files, outpath, dtg, prefix, suffix):
+def appendHdr(fi, hdr, outpath, dtg, prefix, suffix):
      
     #gdas1.%y2%m2%d2.t%h2z.mtiasi.tm00.bufr_d 
     fext=open(os.path.join(outpath,prefix+'.'+dtg.strftime("%y%m%d.t%Hz")+'.'+suffix),"wb")
-    for f in files:
-        fo=open(f,"rb")
-        shutil.copyfileobj(fo, fext)
-        fo.close()
+    fo = open(hdr,"rb")
+    shutil.copyfileobj(fo, fext)
+    fo.close()
+    fo = open(fi,"rb")
+    shutil.copyfileobj(fo,fext)
+    fo.close()
+
     fext.close()        
-def main(inpath, outpath, start, end, prefix, suffix):
+def main(inpath, outpath, start, end, prefix, suffix, hdr):
     startYear, startMonth, startDay, startHour = int(start[0:4]), int(start[4:6]), int(start[6:8]), int(start[8:10])
     endYear, endMonth, endDay, endHour = int(end[0:4]), int(end[4:6]), int(end[6:8]), int(end[8:10])
     startDtg = datetime(startYear, startMonth, startDay, startHour)
     endDtg = datetime(endYear, endMonth, endDay, endHour)
     currentDtg = startDtg
-    files = glob.glob(os.path.join(inpath,'*.bfr'))
-    files.sort()
     while(currentDtg<endDtg):
-        filesOut = getFilesInWindow(files,currentDtg-timedelta(hours=3), currentDtg+timedelta(hours=3)) 
-        catFiles( filesOut, outpath, currentDtg, prefix, suffix)
+        fileIn = os.path.join(inpath,prefix+'.'+currentDtg.strftime("%y%m%d.t%Hz")+'.'+suffix)
+        appendHdr( fileIn, hdr, outpath, currentDtg, prefix, suffix)
         currentDtg += timedelta(hours=6)        
 if __name__ == "__main__":
     #gdas1.%y2%m2%d2.t%h2z.mtiasi.tm00.bufr_d 
@@ -45,6 +44,7 @@ if __name__ == "__main__":
     parser.add_argument('--end', help="end dtg",required=True,dest='end')
     parser.add_argument('--prefix', help="what to stick on front of outputfile",required=False,dest='prefix',default='gdas')
     parser.add_argument('--suffix', help="what to stick on the end of outputfile",required=False,dest='suffix',default='mtiasi.tm00.bufr_d')
+    parser.add_argument('--header', help="internal bufr header for gsi",required=False,dest='hdr',default='iasi.hdr')
     a = parser.parse_args()
-    main(a.path, a.outpath, a.start, a.end, a.prefix, a.suffix)
+    main(a.path, a.outpath, a.start, a.end, a.prefix, a.suffix, a.hdr)
 

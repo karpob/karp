@@ -1,29 +1,48 @@
-#  This program was automatically generated with bufr_dump -Dpython
-#  Using ecCodes version: 2.27.1
+#!/usr/bin/env python3
 
 from __future__ import print_function
 import traceback
 import sys
 from eccodes import *
 import numpy as np
-import configparser
+import configparser,argparse
 import json,h5py
-
+import os
+#print (help(codes_set_definitions_path))
+#print ("Before ECCODES_DEFINITION_PATH ", os.environ['ECCODES_DEFINITION_PATH'])
+#sys.exit()
 def readMatrix(f):
     h5 = h5py.File(f,'r')
     # Matrix is pc# by channel #
-    ReconstructionOperator = np.asmatrix(h5['ReconstructionOperator'])
-    return ReconstructionOperator
+    if('ReconstructionOperator' in list(h5.keys())):
+        ReconstructionOperator = np.asarray(h5['ReconstructionOperator'])
+        Mean = np.zeros(ReconstructionOperator.shape[1])
+        Nedr = np.ones(ReconstructionOperator.shape[1])
+    elif('Eigenvectors' in list(h5.keys())):
+        ReconstructionOperator = np.asarray(h5['Eigenvectors'])
+        Mean = np.asarray(h5['Mean'])
+        Nedr = np.asarray(h5['Nedr'])
+    else:
+        print("Reconstruction operator data unknown.")
+        sys.exit(1)
+    return ReconstructionOperator,Mean,Nedr
 def applyPc(f,subset,scores,q=[0.5]):
-    R = readMatrix(f)
+    R,meanz,Nedr = readMatrix(f)
     s = np.asarray(scores)
     # just use max q since every FOV has it's own scale which is the same
     qmax = max(q)
     rads = np.zeros([R[:,subset].shape[1],s.shape[1],s.shape[2]])
-    for i in list(range(s.shape[1])):
-        for j in list(range(s.shape[2])):
-            r = qmax*np.asmatrix(s[:,i,j])*R[:,subset]
-            rads[:,i,j] = r
+    mterm =  Nedr[subset]*meanz[subset]
+    factor = Nedr[subset]
+    RR = R[:,subset]
+    l,m,n = s.shape
+    k = R[:,subset].shape[1]
+    rads1 = np.zeros([R[:,subset].shape[1],m*n])
+    ss = s.reshape(l,m*n)
+    for ii in list(range(m*n)):
+        r = qmax * np.matmul( ss[:,ii], RR )
+        rads1[:,ii] = factor*r + mterm #+ meanNedr[subset]*1e-3
+    rads = rads1.reshape(k,m,n)
     return rads
 
 def makeScaledInt(rads,scale_factor):
@@ -72,32 +91,56 @@ def bufr_decode(input_file,\
     # -----------------
     iii=0
     while (True):
+    #for iziz in range(0,1):
         print ('Decoding message number {}'.format(iii))
         iii+=1
-        ibufr = codes_bufr_new_from_file(f)
+        try:
+            ibufr = codes_bufr_new_from_file(f)
+        except:
+            break
         # exit while if we reach end of file.
         # going off example from ECMWF tutorial, not convinced 
         # this is the cleanest way to do this.
         if(ibufr is None):
             break
-
+        
         codes_set(ibufr, 'unpack', 1)
+        #need this because of some weirdness in bufr message which tries to put multiple scanlines in one message.
+        if( 'scanLineNumber' in list( modifiedData.keys() ) ):
+            cnt = codes_get_array(ibufr,'scanLineNumber')
+            if(len(cnt)>1):
+                continue
+        #sometimes it just has 1 crosstrack point which is garbage, skip it.
+        skip = False
+        for k in list(usedButDroppedDataArray.keys()):
+            if '#nonNormalizedPrincipalComponentScore' in k:
+                tmp = codes_get_array(ibufr,k)
+                if len(tmp) == 1:
+                    skip = True
+        if(skip):
+            continue
         for k in list(imagerData.keys()):
             imagerData[k].append(codes_get(ibufr, k))
         for k in list(imagerDataArray.keys()):
             imagerDataArray[k].append(codes_get_array(ibufr,k))
         for k in list(usedButDroppedData.keys()):
             usedButDroppedData[k].append(codes_get(ibufr,k))
-        for k in list(usedButDroppedDataArray.keys()):
-            usedButDroppedDataArray[k].append(codes_get_array(ibufr,k))
         for k in list(modifiedData.keys()):
             modifiedData[k].append(codes_get(ibufr,k))
-        for k in list(modifiedDataArray.keys()):
-            modifiedDataArray[k].append(codes_get_array(ibufr,k))
+        for k in list(usedButDroppedDataArray.keys()):
+            tmp = codes_get_array(ibufr,k)
+            usedButDroppedDataArray[k].append(tmp)
+
         for k in list(passedData.keys()):
             passedData[k].append(codes_get(ibufr,k))
+        for k in list(modifiedDataArray.keys()):
+            tmp = codes_get_array(ibufr,k)
+#           if('hour' in k or 'minute' in k or 'second' in k):
+#                print(k,tmp)
+            modifiedDataArray[k].append(tmp)
         for k in list(passedDataArray.keys()):
-            passedDataArray[k].append(codes_get_array(ibufr,k))
+            tmp = codes_get_array(ibufr,k)
+            passedDataArray[k].append(tmp)
         for k in list(unusedData.keys()):
             unusedData[k].append(codes_get(ibufr,k))
         for k in list(unusedArray):
@@ -220,13 +263,10 @@ def bufr_encode(imagerData,\
             codes_write(ibufr, outfile)
             codes_release(ibufr)
 
-def main(matrix, subset, band_limits, pc_limits, scale_limits, scale_values, ioIn, ioBufOut, ioNcOut):
+def main(matrix, subset, band_limits, pc_limits, scale_limits, scale_values, ioIn, ioBufOut, ioNcOut, infn, outfn, defs):
    
-    if len(sys.argv) < 3:
-        print('Usage: ', sys.argv[0], ' BUFR_file_in', sys.argv[1],'BUFR_file_out', file=sys.stderr)
-        sys.exit(1)
-    infn = sys.argv[1]
-    outfn = sys.argv[2]
+    codes_set_definitions_path(defs)
+
     print('Input File: ',infn)
     print('Output File', outfn)
     try:
@@ -341,6 +381,12 @@ def main(matrix, subset, band_limits, pc_limits, scale_limits, scale_values, ioI
                 mapBuf)
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser( description = 'Run PCC reconstructed radiances.')
+    parser.add_argument('--input', help = 'experiment', required = True, dest = 'input')
+    parser.add_argument('--output',help = 'control', required = True, dest='output')
+    parser.add_argument('--definitions', help="control name.", dest='definitions', default='definitions' )
+    aa = parser.parse_args()
+
     cfg = configparser.ConfigParser()
     cfg.read( 'channel_subset.cfg' )
 
@@ -374,8 +420,6 @@ if __name__ == "__main__":
 
     iocfg = configparser.ConfigParser()
     iocfg.read( 'iasi_io_map.cfg' )
-    for k in iocfg.keys():
-        print(k)  
     flagsCombine = json.loads(iocfg['flagsCombine']['input'])
     ioIn = {}
     ioBufOut = {}
@@ -384,7 +428,6 @@ if __name__ == "__main__":
         #already have flags combined handled above
         if k=='flagsCombine': continue
         if ('input' in iocfg[k].keys()):
-            print(k)
             ioIn[k] = json.loads(iocfg[k]['input'])
         else:
             ioIn[k] = []
@@ -396,4 +439,6 @@ if __name__ == "__main__":
             ioNcOut[k] = ioIn[k]
         else:
             ioNcOut[k] = json.loads(iocfg[k]['outNc']) 
-    sys.exit( main(matrix, subset, band_limits, pc_limits, scale_limits, scale_values, ioIn, ioBufOut, ioNcOut) )
+
+
+    main( matrix, subset, band_limits, pc_limits, scale_limits, scale_values, ioIn, ioBufOut, ioNcOut, aa.input, aa.output, aa.definitions)
