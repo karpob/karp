@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-
 from __future__ import print_function
+import os
+os.environ['OMP_NUM_THREADS'] = '4'
 import traceback
 import sys
 from eccodes import *
 import numpy as np
 import configparser,argparse
 import json,h5py
-import os
 #print (help(codes_set_definitions_path))
 #print ("Before ECCODES_DEFINITION_PATH ", os.environ['ECCODES_DEFINITION_PATH'])
 #sys.exit()
@@ -34,14 +34,14 @@ def applyPc(f,subset,scores,q=[0.5]):
     rads = np.zeros([R[:,subset].shape[1],s.shape[1],s.shape[2]])
     mterm =  Nedr[subset]*meanz[subset]
     factor = Nedr[subset]
-    RR = R[:,subset]
+    RR = R[:,subset]*factor
     l,m,n = s.shape
     k = R[:,subset].shape[1]
     rads1 = np.zeros([R[:,subset].shape[1],m*n])
     ss = s.reshape(l,m*n)
-    for ii in list(range(m*n)):
-        r = qmax * np.matmul( ss[:,ii], RR )
-        rads1[:,ii] = factor*r + mterm #+ meanNedr[subset]*1e-3
+    r = qmax *np.matmul(ss.T,RR)
+    roff = r + mterm
+    rads1[:,:] = roff.T
     rads = rads1.reshape(k,m,n)
     return rads
 
@@ -193,6 +193,7 @@ def bufr_encode(imagerData,\
     nfov = 4
     #scaled radiances dims chan,scan,fov# (1-120)
     nscan = scaledRadianceSubset.shape[1]
+    inccc = 0
     for iscn in list(range(nscan)):
         fov_start = 0
         for ifov in list(range(nfov)):
@@ -259,9 +260,11 @@ def bufr_encode(imagerData,\
                 print ("Created output BUFR file {}".format(outfile))
             else:
                 outfile = open(outfn, 'ab')
-            print ("Writing Scan {} FOR {} in {}".format(iscn+1,ifov+1,outfile))
+            if(inccc%400==0): 
+                print ("Writing Scan {} FOR {} in {}".format(iscn+1,ifov+1,outfn))
             codes_write(ibufr, outfile)
             codes_release(ibufr)
+            inccc+=1
 
 def main(matrix, subset, band_limits, pc_limits, scale_limits, scale_values, ioIn, ioBufOut, ioNcOut, infn, outfn, defs):
    
@@ -431,11 +434,11 @@ if __name__ == "__main__":
             ioIn[k] = json.loads(iocfg[k]['input'])
         else:
             ioIn[k] = []
-        if('outBuf' not in list(iocfg[k].keys())):
+        if('outbufr' not in list(iocfg[k].keys())):
             ioBufOut[k] = ioIn[k]
         else:
-            ioBufOut[k] = json.loads(iocfg[k]['outBuf'])
-        if('ncOut' not in list(iocfg[k].keys()) ):
+            ioBufOut[k] = json.loads(iocfg[k]['outbufr'])
+        if('ncout' not in list(iocfg[k].keys()) ):
             ioNcOut[k] = ioIn[k]
         else:
             ioNcOut[k] = json.loads(iocfg[k]['outNc']) 

@@ -130,7 +130,7 @@ def main(matrix, subset, band_limits, pc_limits, scale_limits, scale_values, ioI
         sys.exit(1)
     infn = sys.argv[1]
     outfn = 'none' 
-    print('Input File: ',infn)
+    #print('Input File: ',infn)
     
     try:
         imagerData,\
@@ -212,6 +212,6 @@ if __name__ == "__main__":
             ioNcOut[k] = ioIn[k]
         else:
             ioNcOut[k] = json.loads(iocfg[k]['outNc']) 
-
+    codes_set_definitions_path('../definitions')
 
     sys.exit( main(matrix, subset, band_limits, pc_limits, scale_limits, scale_values, ioIn, ioBufOut, ioNcOut) )
